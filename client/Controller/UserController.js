@@ -5,7 +5,7 @@ const { UsersCollection } = require("../Model/Users");
 
 async function GetUser(req, res) {
   const getAllUser = await UsersCollection.find();
-  return res.status(200).send({ data: getAllUser});
+  return res.status(200).send(getAllUser);
 }
 
 // @METHOD POST
@@ -23,14 +23,14 @@ async function PostUser(req, res) {
         .send({ error: "Username should be 4 letters long" });
     }
 
-    const emailValidation = /^[a-zA-Z0-9]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailValidation = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailValidation.test(useremail)) {
       return res.status(400).send({ error: "Invalid Email" });
     }
 
     const findIfExists = await UsersCollection.find({
-      UserEmail: useremail,
+      UserEmail: useremail.toLowerCase(),
     });
 
     if (findIfExists.length > 0) {
@@ -43,7 +43,7 @@ async function PostUser(req, res) {
       UserPass: userpassword,
     });
 
-    return res.status(201).send(req.body );
+    return res.status(201).send(req.body);
   } catch (error) {
     console.log(error);
   }
@@ -62,4 +62,60 @@ async function deleteUser(req, res) {
   return res.status(200).send({ message: "user deleted successfully" });
 }
 
-module.exports = { GetUser, PostUser, deleteUser };
+// METHOD -- UPDATE
+// API    -- http://localhost:4869/Users/_id
+
+async function updateUser(req, res) {
+  const urlUser_id = req.params.id;
+
+  const getOldRoleName = await UsersCollection.findOne({
+    _id: urlUser_id,
+  });
+
+  if (getOldRoleName) {
+    const { username, useremail, userpassword } = req.body;
+
+    const nameValidation = /^[A-Za-z]{4,}$/;
+
+    if (!nameValidation.test(username)) {
+      return res
+        .status(400)
+        .send({ error: "Username should be 4 letters long" });
+    }
+
+    const emailValidation = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailValidation.test(useremail)) {
+      return res.status(400).send({ error: "Invalid Email" });
+    }
+
+    const findIfExists = await UsersCollection.find({
+      UserEmail: useremail,
+    });
+
+    if (findIfExists.length > 0) {
+      return res.status(409).send({ error: "Useremail already exists" });
+    }
+
+    await UsersCollection.updateOne(
+      {
+        _id: urlUser_id,
+      },
+      {
+        $set: {
+          UserName: username,
+          UserEmail: useremail,
+          UserPass: userpassword,
+        },
+      }
+    );
+
+    return res
+      .status(200)
+      .send({ message: "role updated successfully", data: req.body });
+  } else {
+    return res.status(400).send({ error: "role name not found" });
+  }
+}
+
+module.exports = { GetUser, PostUser, deleteUser, updateUser };
